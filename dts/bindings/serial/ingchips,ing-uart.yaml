@@ -1,0 +1,12 @@
+description: INGCHIPS Ing UART
+
+compatible: "ingchips,ing-uart"
+
+include: uart-controller.yaml
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true

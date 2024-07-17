@@ -1,0 +1,10 @@
+# INGCHIPS GPIO configuration
+
+# Copyright (c) 2016 Open-RnD Sp. z o.o.
+# SPDX-License-Identifier: Apache-2.0
+config GPIO_INGCHIPS
+	bool "GPIO Driver for ingchips family of MCUs"
+	default y
+	depends on DT_HAS_INGCHIPS_ING_GPIO_ENABLED
+	help
+	  Enable GPIO driver for INGCHIPS line of MCUs

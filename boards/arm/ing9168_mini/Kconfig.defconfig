@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_INGCHIPS_ING9168
+
+config BUILD_OUTPUT_BIN
+	default n
+
+config BOARD
+	default "boards_ingchips_ing9168"
+
+# DWT is not properly emulated in QEMU
+choice NULL_POINTER_EXCEPTION_DETECTION
+	bool
+	default NULL_POINTER_EXCEPTION_DETECTION_NONE
+endchoice
+
+endif # BOARD_INGCHIPS_ING9168

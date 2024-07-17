@@ -1,0 +1,19 @@
+# Copyright (c) 2014-2015 Wind River Systems, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC_INGCHIPS_ING9168_QEMU
+	def_bool y
+	depends on SOC_INGCHIPS_ING9168
+	# Platform has only been tested on QEMU, not on real hardware, so always
+	# assume it is used for a QEMU target.
+
+config ING916_SYSTICK
+	default y
+
+config CORTEX_M_SYSTICK
+	bool "disable this."
+	default n
+
+config VECTOR_IN_RAM
+	bool "is vector in RAM?"
+	default y

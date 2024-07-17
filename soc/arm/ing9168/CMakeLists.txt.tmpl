@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+
+zephyr_library()
+
+zephyr_library_sources(
+  # soc_config.c
+  reboot.S
+  sys_arch_reboot.c
+  power.c
+  )
+
+zephyr_library_include_directories(
+  ${ZEPHYR_BASE}/kernel/include
+  ${ZEPHYR_BASE}/arch/arm/include
+  )
+
+set(SOC_LINKER_SCRIPT ${ZEPHYR_BASE}/include/zephyr/arch/arm/cortex_m/scripts/linker.ld CACHE INTERNAL "")
+
+set(ING_SDK_BASE_ "{ING_SDK_BASE}")
+
+target_link_options(app PUBLIC -Wl,--just-symbols=${ING_SDK_BASE_}/bundles/noos_mini/ING9168xx/symdefs.g)
+
+zephyr_include_directories(${ING_SDK_BASE_}/src/BSP)
+zephyr_include_directories(${ING_SDK_BASE_}/src/FWlib)
+zephyr_include_directories(${ING_SDK_BASE_}/src/Tools)
+zephyr_include_directories(${ING_SDK_BASE_}/src/hal_zephyr)
+zephyr_include_directories(${ING_SDK_BASE_}/src/StartUP/ing916)
+zephyr_include_directories(${ING_SDK_BASE_}/bundles/noos_mini/inc)
+zephyr_library_sources(hal_zephyr.c)
+zephyr_library_sources(gen_os_impl.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_adc.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_gpio.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_i2c.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_pinctrl.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_pwm.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_rtc.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_ssp.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_sysctrl.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_timer.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_uart.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_comparator.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_dma.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_efuse.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_i2s.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_ir.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_keyscan.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_pdm.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_pte.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_qdec.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/FWlib/peripheral_usb.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/Tools/trace.c)
+zephyr_library_sources(${ING_SDK_BASE_}/src/BSP/eflash.c)
+add_definitions(-DUSE_STDPERIPH_DRIVER)
+add_definitions(-DPOWER_SAVING)

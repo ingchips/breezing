@@ -1,0 +1,8 @@
+config UART_INGCHIPS
+	bool "INGCHIPS UART driver"
+	default y
+	depends on DT_HAS_INGCHIPS_ING_UART_ENABLED
+	select SERIAL_HAS_DRIVER
+	select SERIAL_SUPPORT_INTERRUPT
+	help
+	  This option enables the ingchips serial driver.

@@ -1,0 +1,4 @@
+config HAS_INGCHIPS_DRIVERS
+	bool "INGCHIPS Drivers"
+	help
+	  This option enables ingchips Drivers APIs.

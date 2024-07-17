@@ -1,0 +1,18 @@
+identifier: qemu_cortex_m4
+name: QEMU Emulation for Cortex-M4
+type: qemu
+simulation: qemu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - netif:serial-net
+  - gpio
+ram: 40
+flash: 256
+testing:
+  ignore_tags:
+    - net
+vendor: ingchips

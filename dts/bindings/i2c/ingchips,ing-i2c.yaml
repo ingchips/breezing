@@ -1,0 +1,15 @@
+# Copyright (c) 2021, Ingchips Semiconductor
+# SPDX-License-Identifier: Apache-2.0
+
+description: INGCHIPS ING I2C
+
+include: [i2c-controller.yaml, pinctrl-device.yaml]
+
+compatible: "ingchips,ing-i2c"
+
+properties:
+  reg:
+    required: true
+
+  pinctrl-0:
+    required: true
