@@ -96,38 +96,6 @@ static struct {
 
 static const struct device *const h4_dev = NULL;
 
-static inline void h4_get_type(void)
-{
-	/* Get packet type */
-	if (hci_rec_buf_read(h4_dev, &rx.type, 1) != 1) {
-		LOG_WRN("Unable to read H:4 packet type");
-		rx.type = H4_NONE;
-		return;
-	}
-
-	switch (rx.type) {
-	case H4_EVT:
-		rx.remaining = sizeof(rx.evt);
-		rx.hdr_len = rx.remaining;
-		break;
-	case H4_ACL:
-		rx.remaining = sizeof(rx.acl);
-		rx.hdr_len = rx.remaining;
-		break;
-	case H4_ISO:
-		if (IS_ENABLED(CONFIG_BT_ISO)) {
-			rx.remaining = sizeof(rx.iso);
-			rx.hdr_len = rx.remaining;
-			break;
-		}
-		__fallthrough;
-	default:
-		LOG_ERR("Unknown H:4 type 0x%02x", rx.type);
-		rx.type = H4_NONE;
-	}
-	LOG_DBG("rx.remaining is[%d]", rx.remaining);
-}
-
 static bool is_hci_event_discardable(const uint8_t *evt_data)
 {
 	uint8_t evt_type = evt_data[0];
@@ -251,7 +219,7 @@ uint32_t cb_hci_recv(const platform_hci_recv_t *msg, void *_)
 	uint8_t pkt_indicator;
 	struct net_buf *buf = NULL;
 	size_t remaining = msg->len_of_hci;
-	uint8_t *data = msg->buff;
+	const uint8_t *data = msg->buff;
 	pkt_indicator = msg->hci_type;
 	LOG_HEXDUMP_DBG(data, remaining, "host packet data:");
 
@@ -372,7 +340,6 @@ done:
 
 static int h4_open(void)
 {
-	int ret;
     hci_interf = (const platform_hci_link_layer_interf_t *)platform_get_link_layer_interf();
 	return 0;
 }

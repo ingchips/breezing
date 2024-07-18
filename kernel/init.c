@@ -536,7 +536,7 @@ void __weak z_early_rand_get(uint8_t *buf, size_t length)
 	}
 }
 
-struct k_thread dummy_thread;
+static struct k_thread init_dummy_thread;
 
 void z_cstart0(void) {
 	/* gcov hook needed to get the coverage report.*/
@@ -551,7 +551,7 @@ void z_cstart0(void) {
 	/* Note: The z_ready_thread() call in prepare_multithreading() requires
 	 * a dummy thread even if CONFIG_ARCH_HAS_CUSTOM_SWAP_TO_MAIN=y
 	 */
-	z_dummy_thread_init(&dummy_thread);
+	z_dummy_thread_init(&init_dummy_thread);
 #endif
 	/* do any necessary initialization of static devices */
 	z_device_state_init();

@@ -14,6 +14,7 @@ static uint32_t cb_hard_fault(hard_fault_info_t *info, void *_)
                     info->pc, info->lr, info->psr,
                     info->r0, info->r1, info->r2, info->r3, info->r12);
     for (;;);
+    return 0;
 }
 
 static uint32_t cb_assertion(assertion_info_t *info, void *_)
@@ -22,12 +23,14 @@ static uint32_t cb_assertion(assertion_info_t *info, void *_)
                     info->file_name,
                     info->line_no);
     for (;;);
+    return 0;
 }
 
 static uint32_t cb_heap_out_of_mem(uint32_t tag, void *_)
 {
     platform_printf("[OOM] @ %d\r\n", tag);
     for (;;);
+    return 0;
 }
 
 #define TRACE_PORT    APB_UART1
