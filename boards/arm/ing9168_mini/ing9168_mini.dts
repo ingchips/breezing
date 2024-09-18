@@ -2,16 +2,19 @@
 
 /dts-v1/;
 
-#include <ingchips/ing9168.dtsi>
+#include <ingchips/ing91682.dtsi>
 
 / {
 	model = "ingchips ing9168mini";
 	compatible = "ingchips,ing9168mini";
 
 	aliases {
-		led0 = &green_led_2;
+		led0 = &green_led_1;
+		led1 = &red_led_2;
+		led2 = &blue_led_3;
 		uart-0 = &uart0;
 		uart-1 = &uart1;
+		key0 = &board_key1;
 	};
 
 	chosen {
@@ -24,18 +27,66 @@
 
 	leds: leds {
 		compatible = "gpio-leds";
-		green_led_2: led_2 {
-			gpios = <&gpio0 35 1>;
+		green_led_1: led_1 {
+			gpios = <&gpio1 16 1>;
 			label = "User LD2";
+		};
+		red_led_2: led_2 {
+			gpios = <&gpio1 2 1>;
+			label = "User LD4";
+		};
+		blue_led_3: led_3 {
+			gpios = <&gpio1 3 1>;
+			label = "User LD3";
 		};
 	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
 		user_button: button {
-			label = "User";
-			gpios = <&gpio0 1 0>;
+			label = "User key0";
+			gpios = <&gpio0 0 0>;
 			zephyr,code = <0>;
+		};
+		board_key1: key_1 {
+			label = "board key1";
+			gpios = <&gpio0 6 0>;
+			zephyr,code = <1>;
+		};
+		board_key2: key_2 {
+			label = "User key2";
+			gpios = <&gpio0 10 0>;
+			zephyr,code = <2>;
+		};
+		board_key3: key_3 {
+			label = "User key3";
+			gpios = <&gpio0 12 0>;
+			zephyr,code = <3>;
+		};
+		board_key4: key_4 {
+			label = "User key4";
+			gpios = <&gpio0 9 0>;
+			zephyr,code = <4>;
+		};
+	};
+
+	board_leds: b_leds {
+		compatible = "board-gpio-leds";
+		board_led3: b_led_3 {
+			gpios = <&gpio0 11 0>;
+			label = "Board LED3";
+		};
+		board_led4: b_led_4 {
+			gpios = <&gpio0 9 0>;
+			label = "Board LED4";
+		};
+		board_led5: b_led_5 {
+			gpios = <&gpio1 3 0>;
+			label = "Board LED5";
+		};
+		board_led6: b_led_6 {
+			gpios = <&gpio1 6 0>;
+			label = "Board LED6";
 		};
 	};
 
@@ -55,9 +106,9 @@
 	status = "okay";
 };
 
-&gpio1 {
-	status = "okay";
-};
+//&gpio1 {
+//	status = "okay";
+//};
 
 // &i2c0 {
 // 	pinctrl-0 = <&i2c3_scl_pc0 &i2c3_sda_pc1>;

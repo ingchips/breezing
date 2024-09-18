@@ -11,6 +11,14 @@
 #include <zephyr/kernel.h>
 #include <peripheral_pinctrl.h>
 #include <peripheral_gpio.h>
+#include <peripheral_sysctrl.h>
+#include <platform_api.h>
+
+
+#define  GPIO1_PIN_MAX      (20)
+#define GPIO0_BASE      0x40015000
+#define GPIO1_BASE      0x40016000
+
 typedef void (*config_func_t)(const struct device *dev);
 
 struct gpio_ingchips_config {
@@ -27,69 +35,55 @@ struct gpio_ingchips_runtime {
 	sys_slist_t cb;
 };
 
-#define GPIO_REG_ADDR(base, offset) (base + offset)
-
-#define GPIO_RW_ADDR(base, offset, p)			 \
-	(GPIO_REG_ADDR(base, offset) | (1 << (p + 2)))
-
-#define GPIO_RW_MASK_ADDR(base, offset, mask)		 \
-	(GPIO_REG_ADDR(base, offset) | (mask << 2))
-
-enum gpio_regs {
-	GPIO_DATA_OFFSET = 0x000,
-	GPIO_DIR_OFFSET = 0x400,
-	GPIO_DEN_OFFSET = 0x51C,
-	GPIO_IS_OFFSET = 0x404,
-	GPIO_IBE_OFFSET = 0x408,
-	GPIO_IEV_OFFSET = 0x40C,
-	GPIO_IM_OFFSET = 0x410,
-	GPIO_MIS_OFFSET = 0x418,
-	GPIO_ICR_OFFSET = 0x41C,
-};
-
 static void gpio_ingchips_isr(const struct device *dev)
 {
 	const struct gpio_ingchips_config * const cfg = dev->config;
 	struct gpio_ingchips_runtime *context = dev->data;
 	uint32_t base = cfg->base;
-	uint32_t int_stat = sys_read32(GPIO_REG_ADDR(base, GPIO_MIS_OFFSET));
+    GIO_TypeDef *gio_type_ptr = (GIO_TypeDef *)base;
+    uint32_t int_stat = gio_type_ptr->IntStatus;
 
+    gio_type_ptr->IntStatus = (uint32_t)-1;
 	gpio_fire_callbacks(&context->cb, dev, int_stat);
-
-	sys_write32(int_stat, GPIO_REG_ADDR(base, GPIO_ICR_OFFSET));
 }
 
 static int gpio_ingchips_configure(const struct device *dev,
 				    gpio_pin_t pin, gpio_flags_t flags)
 {
 	const struct gpio_ingchips_config *cfg = dev->config;
+
 	uint32_t base = cfg->base;
+    if(base == GPIO0_BASE){
+        SYSCTRL_ClearClkGateMulti( (1 << SYSCTRL_ClkGate_APB_GPIO0));
+    } else if(base == GPIO1_BASE){
+        SYSCTRL_ClearClkGateMulti( (1 << SYSCTRL_ClkGate_APB_GPIO1));
+        pin += GPIO1_PIN_MAX;
+    } else{
+        return -ENODEV;
+    }
 
-	
-	if ((flags & (GPIO_PULL_UP | GPIO_PULL_DOWN)) != 0) {
-		return -ENOTSUP;
-	}
-
+    if(0 != (flags & GPIO_PULL_UP)){
+        PINCTRL_Pull((GIO_Index_t)pin,PINCTRL_PULL_UP);
+    } else if(0 != (flags & GPIO_PULL_DOWN)){
+        PINCTRL_Pull((GIO_Index_t)pin,PINCTRL_PULL_DOWN);
+    } else{
+        PINCTRL_Pull((GIO_Index_t)pin,PINCTRL_PULL_DISABLE);
+    }
 	if ((flags & GPIO_SINGLE_ENDED) != 0) {
 		return -ENOTSUP;
 	}
 
 	if ((flags & GPIO_OUTPUT) != 0) {
-		mm_reg_t mask_addr;
-
-		mask_addr = GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, BIT(pin));
+        GIO_SetDirection((GIO_Index_t)pin,GIO_DIR_OUTPUT);
 		if ((flags & GPIO_OUTPUT_INIT_HIGH) != 0) {
 			GIO_WriteValue(pin, 1);
-			
 		} else if ((flags & GPIO_OUTPUT_INIT_LOW) != 0) {
 			GIO_WriteValue(pin, 0);
 		}
-		GIO_SetDirection(pin, 1);
 	} else if ((flags & GPIO_INPUT) != 0) {
-		GIO_SetDirection(pin, 0);
+		GIO_SetDirection((GIO_Index_t)pin, GIO_DIR_INPUT);
 	} else {
 		/* Pin digital disable */
-		
 	}
 
 	return 0;
@@ -98,8 +92,16 @@ static int gpio_ingchips_configure(const struct device *dev,
 static int gpio_ingchips_port_get_raw(const struct device *dev,
 				       uint32_t *value)
 {
-	*value = (uint32_t)GIO_ReadAll();//GIO_ReadAll return uint64
-
+    const struct gpio_ingchips_config *cfg = dev->config;
+    uint32_t base = cfg->base;
+    uint64_t  pin_mask;
+    if(base == GPIO0_BASE){
+        *value = (uint32_t)GIO_ReadAll();
+    } else if(base == GPIO1_BASE){
+        *value = (uint32_t)(GIO_ReadAll() >> GPIO1_PIN_MAX);
+    } else{
+        return -ENODEV;
+    }
 	return 0;
 }
 
@@ -107,11 +109,18 @@ static int gpio_ingchips_port_set_masked_raw(const struct device *dev,
 					      uint32_t mask,
 					      uint32_t value)
 {
-	const struct gpio_ingchips_config *cfg = dev->config;
-	uint32_t base = cfg->base;
+    const struct gpio_ingchips_config *cfg = dev->config;
+    uint32_t base = cfg->base;
+    uint64_t  pin_mask;
+    if(base == GPIO0_BASE){
+        pin_mask = mask;
+    } else if(base == GPIO1_BASE){
+        pin_mask = ((uint64_t)mask) << GPIO1_PIN_MAX;
+    } else{
+        return -ENODEV;
+    }
 
-	sys_write32(value, GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, mask));
-
+    GIO_ToggleBits(pin_mask);
 	return 0;
 }
 
@@ -120,8 +129,16 @@ static int gpio_ingchips_port_set_bits_raw(const struct device *dev,
 {
 	const struct gpio_ingchips_config *cfg = dev->config;
 	uint32_t base = cfg->base;
+    uint64_t  pin_mask;
+    if(base == GPIO0_BASE){
+        pin_mask = mask;
+    } else if(base == GPIO1_BASE){
+        pin_mask = ((uint64_t)mask) << GPIO1_PIN_MAX;
+    } else{
+        return -ENODEV;
+    }
 
-	sys_write32(mask, GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, mask));
+    GIO_SetBits(pin_mask);
 
 	return 0;
 }
@@ -129,10 +146,18 @@ static int gpio_ingchips_port_set_bits_raw(const struct device *dev,
 static int gpio_ingchips_port_clear_bits_raw(const struct device *dev,
 					      uint32_t mask)
 {
-	const struct gpio_ingchips_config *cfg = dev->config;
-	uint32_t base = cfg->base;
+    const struct gpio_ingchips_config *cfg = dev->config;
+    uint32_t base = cfg->base;
+    uint64_t  pin_mask;
+    if(base == GPIO0_BASE){
+        pin_mask = mask;
+    } else if(base == GPIO1_BASE){
+        pin_mask = ((uint64_t)mask) << GPIO1_PIN_MAX;
+    } else{
+        return -ENODEV;
+    }
 
-	sys_write32(0, GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, mask));
+    GIO_ClearBits(pin_mask);
 
 	return 0;
 }
@@ -140,13 +165,18 @@ static int gpio_ingchips_port_clear_bits_raw(const struct device *dev,
 static int gpio_ingchips_port_toggle_bits(const struct device *dev,
 					   uint32_t mask)
 {
-	const struct gpio_ingchips_config *cfg = dev->config;
-	uint32_t base = cfg->base;
-	uint32_t value;
+    const struct gpio_ingchips_config *cfg = dev->config;
+    uint32_t base = cfg->base;
+    uint64_t  pin_mask;
+    if(base == GPIO0_BASE){
+        pin_mask = mask;
+    } else if(base == GPIO1_BASE){
+        pin_mask = ((uint64_t)mask) << GPIO1_PIN_MAX;
+    } else{
+        return -ENODEV;
+    }
 
-	value = sys_read32(GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, 0xff));
-	value ^= mask;
-	sys_write32(value, GPIO_RW_MASK_ADDR(base, GPIO_DATA_OFFSET, 0xff));
+    GIO_ToggleBits(pin_mask);
 
 	return 0;
 }
@@ -158,36 +188,37 @@ static int gpio_ingchips_pin_interrupt_configure(const struct device *dev,
 {
 	const struct gpio_ingchips_config *cfg = dev->config;
 	uint32_t base = cfg->base;
+    uint8_t  io_int_trigger_type = 0, io_int_enable = 0;
 
 	/* Check if GPIO port needs interrupt support */
 	if (mode == GPIO_INT_MODE_DISABLED) {
 		/* Set the mask to disable the interrupt */
-		sys_set_bit(GPIO_REG_ADDR(base, GPIO_IM_OFFSET), pin);
+        GIO_ConfigIntSource((GIO_Index_t)pin,0,io_int_trigger_type);
 	} else {
 		if (mode == GPIO_INT_MODE_EDGE) {
-			sys_clear_bit(GPIO_REG_ADDR(base, GPIO_IS_OFFSET), pin);
+            io_int_trigger_type |= GIO_INT_EDGE;
 		} else {
-			sys_set_bit(GPIO_REG_ADDR(base, GPIO_IS_OFFSET), pin);
+            io_int_trigger_type |= GIO_INT_LOGIC;
 		}
 
 		if (trig == GPIO_INT_TRIG_BOTH) {
-			sys_set_bit(GPIO_REG_ADDR(base, GPIO_IBE_OFFSET), pin);
+            io_int_enable |= (GIO_INT_EN_LOGIC_HIGH_OR_RISING_EDGE | GIO_INT_EN_LOGIC_LOW_OR_FALLING_EDGE);
 		} else if (trig == GPIO_INT_TRIG_HIGH) {
-			sys_set_bit(GPIO_REG_ADDR(base, GPIO_IEV_OFFSET), pin);
+            io_int_enable |= GIO_INT_EN_LOGIC_HIGH_OR_RISING_EDGE;
 		} else {
-			sys_clear_bit(GPIO_REG_ADDR(base,
-						    GPIO_IEV_OFFSET), pin);
+            io_int_enable |= GIO_INT_EN_LOGIC_LOW_OR_FALLING_EDGE;
 		}
 		/* Clear the Mask to enable the interrupt */
-		sys_clear_bit(GPIO_REG_ADDR(base, GPIO_IM_OFFSET), pin);
+        GIO_ConfigIntSource((GIO_Index_t)pin,io_int_enable,io_int_trigger_type);
 	}
-
 	return 0;
 }
 
 static int gpio_ingchips_init(const struct device *dev)
 {
+    const struct gpio_ingchips_config * const cfg = dev->config;
 
+    cfg->config_func(dev);
 	return 0;
 }
 
@@ -222,9 +253,9 @@ static const struct gpio_driver_api gpio_ingchips_driver_api = {
 		.common = {								\
 			.port_pin_mask = GPIO_PORT_PIN_MASK_FROM_DT_INST(n),		\
 		},									\
-		.base = DT_INST_REG_ADDR(n),			\
+            .base = DT_INST_REG_ADDR(n),			\
 		.port_map = BIT_MASK(DT_INST_PROP(n, ngpios)),		\
-		.config_func = port_## n ##_ingchips_config_func,			\
+		.config_func = port_## n ##_ingchips_config_func,                        \
 	};										\
 											\
 	DEVICE_DT_INST_DEFINE(n,							\
@@ -237,12 +268,11 @@ static const struct gpio_driver_api gpio_ingchips_driver_api = {
 											\
 	static void port_## n ##_ingchips_config_func(const struct device *dev)		\
 	{										\
-		IRQ_CONNECT(DT_INST_IRQN(n),			\
+		irq_connect_dynamic(DT_INST_IRQN(n),			\
 			    DT_INST_IRQ(n, priority),		\
 			    gpio_ingchips_isr,						\
 			    DEVICE_DT_INST_GET(n), 0);					\
 											\
 		irq_enable(DT_INST_IRQN(n));			\
 	}
-
 DT_INST_FOREACH_STATUS_OKAY(INGCHIPS_GPIO_DEVICE)
